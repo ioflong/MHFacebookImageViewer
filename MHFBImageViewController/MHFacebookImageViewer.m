@@ -364,7 +364,7 @@ static const CGFloat kMinImageScale = 1.0f;
 }
 
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
-    DLog(@"buttonIndex is %d",buttonIndex);
+    NSLog(@"buttonIndex is %d",buttonIndex);
     if (buttonIndex == 0) {//保存到手机
         UIImageWriteToSavedPhotosAlbum(self.senderView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
     }
