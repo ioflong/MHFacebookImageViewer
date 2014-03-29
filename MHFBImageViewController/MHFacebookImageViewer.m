@@ -29,7 +29,7 @@ static const CGFloat kMinBlackMaskAlpha = 0.3f;
 static const CGFloat kMaxImageScale = 2.5f;
 static const CGFloat kMinImageScale = 1.0f;
 
-@interface MHFacebookImageViewerCell : UITableViewCell<UIGestureRecognizerDelegate,UIScrollViewDelegate>{
+@interface MHFacebookImageViewerCell : UITableViewCell<UIGestureRecognizerDelegate,UIScrollViewDelegate,UIActionSheetDelegate>{
     UIImageView * __imageView;
     UIScrollView * __scrollView;
     
@@ -86,9 +86,12 @@ static const CGFloat kMinImageScale = 1.0f;
     __scrollView.delegate = self;
     __scrollView.backgroundColor = [UIColor clearColor];
     [self addSubview:__scrollView];
-    [_doneButton addTarget:self
-                    action:@selector(close:)
-          forControlEvents:UIControlEventTouchUpInside];
+    
+    //commented by Longfellow below
+//    [_doneButton addTarget:self
+//                    action:@selector(close:)
+//          forControlEvents:UIControlEventTouchUpInside];
+    //commented bt Longfellow above
 }
 
 - (void) setImageURL:(NSURL *)imageURL defaultImage:(UIImage*)defaultImage imageIndex:(NSInteger)imageIndex {
@@ -102,26 +105,34 @@ static const CGFloat kMinImageScale = 1.0f;
             [__scrollView addSubview:__imageView];
             __imageView.contentMode = UIViewContentModeScaleAspectFill;
         }
-        __block UIImageView * _imageViewInTheBlock = __imageView;
-        __block MHFacebookImageViewerCell * _justMeInsideTheBlock = self;
-        __block UIScrollView * _scrollViewInsideBlock = __scrollView;
-        
-        [__imageView setImageWithURLRequest:[NSURLRequest requestWithURL:imageURL] placeholderImage:defaultImage success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image) {
-            [_scrollViewInsideBlock setZoomScale:1.0f animated:YES];
-            [_imageViewInTheBlock setImage:image];
-            _imageViewInTheBlock.frame = [_justMeInsideTheBlock centerFrameFromImage:_imageViewInTheBlock.image];
+        if (imageURL) {
+            __block UIImageView * _imageViewInTheBlock = __imageView;
+            __block MHFacebookImageViewerCell * _justMeInsideTheBlock = self;
+            __block UIScrollView * _scrollViewInsideBlock = __scrollView;
             
-        } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
-            NSLog(@"Image From URL Not loaded");
-        }];
+            [__imageView setImageWithURLRequest:[NSURLRequest requestWithURL:imageURL] placeholderImage:defaultImage success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image) {
+                [_scrollViewInsideBlock setZoomScale:1.0f animated:YES];
+                [_imageViewInTheBlock setImage:image];
+                _imageViewInTheBlock.frame = [_justMeInsideTheBlock centerFrameFromImage:_imageViewInTheBlock.image];
+                
+            } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
+//            NSLog(@"Image From URL Not loaded");
+            }];
+        } else {
+            [__imageView setImage:defaultImage];
+        }
+
         
         if(_imageIndex==_initialIndex && !_isLoaded){
             __imageView.frame = _originalFrameRelativeToScreen;
             [UIView animateWithDuration:0.4f delay:0.0f options:0 animations:^{
                 __imageView.frame = [self centerFrameFromImage:__imageView.image];
-                CGAffineTransform transf = CGAffineTransformIdentity;
+                //commented by Longfellow below
+//                CGAffineTransform transf = CGAffineTransformIdentity;
                 // Root View Controller - move backward
-                _rootViewController.view.transform = CGAffineTransformScale(transf, 0.95f, 0.95f);
+//                _rootViewController.view.transform = CGAffineTransformScale(transf, 0.95f, 0.95f);
+                //commented by Longfellow above
+
                 // Root View Controller - move forward
                 //                _viewController.view.transform = CGAffineTransformScale(transf, 1.05f, 1.05f);
                 _blackMask.alpha = 1;
@@ -242,8 +253,10 @@ static const CGFloat kMinImageScale = 1.0f;
             }else {
                 __imageView.frame = CGRectMake(__imageView.frame.origin.x, isGoingUp?-screenHeight:screenHeight, __imageView.frame.size.width, __imageView.frame.size.height);
             }
-            CGAffineTransform transf = CGAffineTransformIdentity;
-            _rootViewController.view.transform = CGAffineTransformScale(transf, 1.0f, 1.0f);
+            //commented by Longfellow below
+//            CGAffineTransform transf = CGAffineTransformIdentity;
+//            _rootViewController.view.transform = CGAffineTransformScale(transf, 1.0f, 1.0f);
+            //commented by Longfellow above
             _blackMask.alpha = 0.0f;
         } completion:^(BOOL finished) {
             if (finished) {
@@ -315,6 +328,10 @@ static const CGFloat kMinImageScale = 1.0f;
 }
 
 - (void)addMultipleGesture {
+    UILongPressGestureRecognizer *longPressGesture = [[UILongPressGestureRecognizer alloc]initWithTarget:self action:@selector(didLongPress:)];
+    longPressGesture.minimumPressDuration = 0.5f;
+    [__scrollView addGestureRecognizer:longPressGesture];
+    
     UITapGestureRecognizer *twoFingerTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTwoFingerTap:)];
     twoFingerTapGesture.numberOfTapsRequired = 1;
     twoFingerTapGesture.numberOfTouchesRequired = 2;
@@ -338,6 +355,25 @@ static const CGFloat kMinImageScale = 1.0f;
     [self centerScrollViewContents];
 }
 
+#pragma mark - For Save photo action
+- (void)didLongPress:(UILongPressGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        UIActionSheet *actionSheet = [[UIActionSheet alloc]initWithTitle:nil delegate:self cancelButtonTitle:@"取消" destructiveButtonTitle:nil otherButtonTitles:@"保存到手机", nil];
+        [actionSheet showInView:[[[UIApplication sharedApplication] delegate] window]];
+    }
+}
+
+- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
+    DLog(@"buttonIndex is %d",buttonIndex);
+    if (buttonIndex == 0) {//保存到手机
+        UIImageWriteToSavedPhotosAlbum(self.senderView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
+    }
+}
+
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo{
+    
+}
+
 #pragma mark - For Zooming
 - (void)didTwoFingerTap:(UITapGestureRecognizer*)recognizer {
     CGFloat newZoomScale = __scrollView.zoomScale / 1.5f;
@@ -347,26 +383,27 @@ static const CGFloat kMinImageScale = 1.0f;
 
 #pragma mark - Showing of Done Button if ever Zoom Scale is equal to 1
 - (void)didSingleTap:(UITapGestureRecognizer*)recognizer {
-    if(_doneButton.superview){
-        [self hideDoneButton];
-    }else {
-        if(__scrollView.zoomScale == __scrollView.minimumZoomScale){
-            if(!_isDoneAnimating){
-                _isDoneAnimating = YES;
-                [self.viewController.view addSubview:_doneButton];
-                _doneButton.alpha = 0.0f;
-                [UIView animateWithDuration:0.2f animations:^{
-                    _doneButton.alpha = 1.0f;
-                } completion:^(BOOL finished) {
-                    [self.viewController.view bringSubviewToFront:_doneButton];
-                    _isDoneAnimating = NO;
-                }];
-            }
-        }else if(__scrollView.zoomScale == __scrollView.maximumZoomScale) {
-            CGPoint pointInView = [recognizer locationInView:__imageView];
-            [self zoomInZoomOut:pointInView];
-        }
-    }
+    [self close:nil];
+//    if(_doneButton.superview){
+//        [self hideDoneButton];
+//    }else {
+//        if(__scrollView.zoomScale == __scrollView.minimumZoomScale){
+//            if(!_isDoneAnimating){
+//                _isDoneAnimating = YES;
+//                [self.viewController.view addSubview:_doneButton];
+//                _doneButton.alpha = 0.0f;
+//                [UIView animateWithDuration:0.2f animations:^{
+//                    _doneButton.alpha = 1.0f;
+//                } completion:^(BOOL finished) {
+//                    [self.viewController.view bringSubviewToFront:_doneButton];
+//                    _isDoneAnimating = NO;
+//                }];
+//            }
+//        }else if(__scrollView.zoomScale == __scrollView.maximumZoomScale) {
+//            CGPoint pointInView = [recognizer locationInView:__imageView];
+//            [self zoomInZoomOut:pointInView];
+//        }
+//    }
 }
 
 #pragma mark - Zoom in or Zoom out
@@ -533,10 +570,11 @@ static const CGFloat kMinImageScale = 1.0f;
     [
      self.view insertSubview:_blackMask atIndex:0];
     
-    _doneButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [_doneButton setImageEdgeInsets:UIEdgeInsetsMake(-10, -10, -10, -10)];  // make click area bigger
-    [_doneButton setImage:[UIImage imageNamed:@"Done"] forState:UIControlStateNormal];
-    _doneButton.frame = CGRectMake(windowBounds.size.width - (51.0f + 9.0f),15.0f, 51.0f, 26.0f);
+    //commented by Longfellow
+//    _doneButton = [UIButton buttonWithType:UIButtonTypeCustom];
+//    [_doneButton setImageEdgeInsets:UIEdgeInsetsMake(-10, -10, -10, -10)];  // make click area bigger
+//    [_doneButton setImage:[UIImage imageNamed:@"Done"] forState:UIControlStateNormal];
+//    _doneButton.frame = CGRectMake(windowBounds.size.width - (51.0f + 9.0f),15.0f, 51.0f, 26.0f);
 }
 
 #pragma mark - Show
@@ -587,6 +625,25 @@ static const CGFloat kMinImageScale = 1.0f;
 @implementation UIImageView (MHFacebookImageViewer)
 
 #pragma mark - Initializer for UIImageView
+/**
+ *  showImageViewer add by Longfellow
+ */
+- (void) showImageViewer {
+    [self showImageViewerWithImageURL:nil imageDatasource:nil initialIndex:0 onOpen:nil onClose:nil];
+}
+
+- (void)showImageViewerWithImageURL:(NSURL *)url imageDatasource:(id<MHFacebookImageViewerDatasource>)imageDatasource initialIndex:(NSInteger)initialIndex onOpen:(MHFacebookImageViewerOpeningBlock)open onClose:(MHFacebookImageViewerClosingBlock)close {
+    MHFacebookImageViewer * imageBrowser = [[MHFacebookImageViewer alloc]init];
+    imageBrowser.senderView = self;
+    imageBrowser.imageURL = url;
+    imageBrowser.openingBlock = open;
+    imageBrowser.closingBlock = close;
+    imageBrowser.imageDatasource = imageDatasource;
+    imageBrowser.initialIndex = initialIndex;
+    if(self.image)
+        [imageBrowser presentFromRootViewController];
+}
+
 - (void) setupImageViewer {
     [self setupImageViewerWithCompletionOnOpen:nil onClose:nil];
 }
@@ -629,18 +686,8 @@ static const CGFloat kMinImageScale = 1.0f;
 
 #pragma mark - Handle Tap
 - (void) didTap:(MHFacebookImageViewerTapGestureRecognizer*)gestureRecognizer {
-    
-    MHFacebookImageViewer * imageBrowser = [[MHFacebookImageViewer alloc]init];
-    imageBrowser.senderView = self;
-    imageBrowser.imageURL = gestureRecognizer.imageURL;
-    imageBrowser.openingBlock = gestureRecognizer.openingBlock;
-    imageBrowser.closingBlock = gestureRecognizer.closingBlock;
-    imageBrowser.imageDatasource = gestureRecognizer.imageDatasource;
-    imageBrowser.initialIndex = gestureRecognizer.initialIndex;
-    if(self.image)
-        [imageBrowser presentFromRootViewController];
+    [self showImageViewerWithImageURL:gestureRecognizer.imageURL imageDatasource:gestureRecognizer.imageDatasource initialIndex:gestureRecognizer.initialIndex onOpen:gestureRecognizer.openingBlock onClose:gestureRecognizer.closingBlock];
 }
-
 
 #pragma mark Removal
 - (void)removeImageViewer

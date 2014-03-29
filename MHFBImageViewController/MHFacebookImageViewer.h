@@ -54,6 +54,9 @@ typedef void (^MHFacebookImageViewerClosingBlock)(void);
 #pragma mark - UIImageView Category
 
 @interface UIImageView(MHFacebookImageViewer)
+- (void) showImageViewer;
+- (void)showImageViewerWithImageURL:(NSURL *)url imageDatasource:(id<MHFacebookImageViewerDatasource>)imageDatasource initialIndex:(NSInteger)initialIndex onOpen:(MHFacebookImageViewerOpeningBlock)open onClose:(MHFacebookImageViewerClosingBlock)close;
+
 - (void) setupImageViewer;
 - (void) setupImageViewerWithCompletionOnOpen:(MHFacebookImageViewerOpeningBlock)open onClose:(MHFacebookImageViewerClosingBlock)close;
 - (void) setupImageViewerWithImageURL:(NSURL*)url;
